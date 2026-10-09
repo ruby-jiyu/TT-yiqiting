@@ -1,0 +1,13 @@
+{
+  "display_name": "一起听",
+  "loading_order": 10,
+  "requires": [],
+  "optional": [],
+  "js": "index.js",
+  "css": "index.css",
+  "author": "you",
+  "version": "1.1.0",
+  "homePage": "https://github.com/ruby-jiyu/ST-yiqiting",
+  "auto_update": false
+}
+

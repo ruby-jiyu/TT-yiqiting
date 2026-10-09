@@ -1,0 +1,779 @@
+/* ============================================================
+   酒馆网易云音乐助手 —— 浅蓝毛玻璃风格
+   适配 SillyTavern，所有类名以 nm- 前缀避免冲突
+   ============================================================ */
+
+/* ---------- 外层容器（悬浮球 + 面板） ---------- */
+.nm-role-summary { text-align: center; margin: 10px 0; font-size: 13px; }
+#nm-role-desc { font-size: 11px; opacity: .7; margin-top: 5px; }
+.nm-song-action { border: 0; background: transparent; color: #afc8e8; cursor: pointer; padding: 8px; font-size: 16px; flex-shrink: 0; }
+.nm-song-action:hover { color: #fff; }
+.nm-login-box > label, .nm-ai-body > label { display: block; text-align: left; font-size: 12px; margin: 10px 0; }
+.nm-login-box > label > input, .nm-ai-body > label > input { display: block; box-sizing: border-box; width: 100%; margin-top: 6px; padding: 9px; border: 1px solid #526071; border-radius: 8px; background: #232a33; color: #fff; user-select: text; }
+#nm-thought-reco-result, #nm-thought-like-result { white-space: pre-wrap; overflow-wrap: anywhere; }
+#nm-ai-status { font-size: 12px; margin-top: 8px; overflow-wrap: anywhere; }
+#nm-like-current { width: 100%; margin-bottom: 8px; }
+
+#nm-wrap {
+    position: fixed;
+    z-index: 99999;
+    top: 40%;
+    right: 20px;
+    user-select: none;
+    font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
+}
+
+/* ---------- 猫咪悬浮球 ---------- */
+#nm-orb {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background-color: transparent;
+    background-image: url("https://s1.imagehub.cc/images/2026/10/09/875502143ae90cdf9fac85b92943f828.png");
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    cursor: grab;
+    position: relative;
+    transition: transform .2s ease;
+    box-shadow: 0 3px 12px rgba(0, 0, 0, .4);
+}
+#nm-orb:hover { transform: scale(1.1); }
+#nm-orb:active { cursor: grabbing; }
+#nm-orb.playing { animation: nmCatBounce 2s ease-in-out infinite; }
+@keyframes nmCatBounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-3px); }
+}
+
+/* ---------- 播放面板（ins 纯色风） ---------- */
+#nm-panel {
+    position: absolute;
+    top: 50%;
+    right: 52px;
+    transform: translateY(-50%);
+    width: 330px;
+    max-height: 82vh;
+    background: #1a1a1a;
+    border: 1px solid rgba(255, 255, 255, .08);
+    border-radius: 20px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, .5);
+    display: none;
+    overflow-y: auto;
+    scrollbar-width: none;
+    color: #fff;
+}
+#nm-panel::-webkit-scrollbar { display: none; }
+
+/* 面板背景层：纯色，无图 */
+.nm-panel-bg {
+    display: none;
+}
+.nm-panel-content {
+    position: relative;
+    z-index: 1;
+    padding: 18px;
+}
+
+/* ---------- 顶栏标签 ---------- */
+.nm-top-tabs {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 14px;
+    background: rgba(255, 255, 255, .5);
+    border-radius: 12px;
+    padding: 4px;
+    border: 1px solid rgba(255, 255, 255, .6);
+}
+.nm-tab {
+    flex: 1;
+    padding: 7px 0;
+    text-align: center;
+    font-size: 12px;
+    color: #7a8a9a;
+    border-radius: 9px;
+    cursor: pointer;
+    transition: all .2s ease;
+    border: none;
+    background: transparent;
+    font-family: inherit;
+}
+.nm-tab.active {
+    background: #fff;
+    color: #4a6080;
+    box-shadow: 0 2px 8px rgba(120, 150, 180, .15);
+    font-weight: 500;
+}
+.nm-tab:hover:not(.active) { color: #5a7090; }
+
+/* ---------- 视图切换 ---------- */
+.nm-view { display: none; }
+.nm-view.active { display: block; }
+
+/* ---------- 歌曲信息 ---------- */
+.nm-song-info { text-align: center; margin-bottom: 14px; }
+.nm-song-title { font-size: 16px; font-weight: 600; color: #3d4f65; margin-bottom: 4px; }
+.nm-song-artist { font-size: 12px; color: #8a9ab0; }
+
+/* ---------- 进度条 ---------- */
+.nm-progress-wrap {
+    width: 100%;
+    height: 4px;
+    background: rgba(150, 170, 190, .2);
+    border-radius: 3px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    position: relative;
+}
+.nm-progress-bar {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #a8c5e0, #c5dcf0);
+    border-radius: 3px;
+    position: relative;
+    transition: width .1s linear;
+}
+.nm-progress-bar::after {
+    content: "";
+    position: absolute;
+    right: -4px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 1px 4px rgba(120, 150, 180, .4);
+}
+.nm-time-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+    color: #9aabbd;
+    margin-bottom: 16px;
+}
+
+/* ---------- 播放控制 ---------- */
+.nm-control-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+    margin-bottom: 18px;
+}
+.nm-ctrl {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, .6);
+    border: 1px solid rgba(255, 255, 255, .7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: #6a7e94;
+    transition: all .2s ease;
+}
+.nm-ctrl:hover {
+    background: #fff;
+    color: #4a6080;
+    box-shadow: 0 2px 10px rgba(120, 150, 180, .2);
+}
+.nm-ctrl.nm-play {
+    width: 48px;
+    height: 48px;
+    background: linear-gradient(145deg, #b8d4ec, #94b8d8);
+    border: none;
+    color: #fff;
+    box-shadow: 0 4px 14px rgba(140, 170, 200, .35);
+}
+.nm-ctrl.nm-play:hover { filter: brightness(1.05); }
+
+/* ---------- 歌单列表 ---------- */
+.nm-playlist-section {
+    background: rgba(255, 255, 255, .45);
+    border: 1px solid rgba(255, 255, 255, .6);
+    border-radius: 14px;
+    padding: 8px 12px;
+    margin-bottom: 14px;
+    max-height: 180px;
+    overflow-y: auto;
+    scrollbar-width: none;
+}
+.nm-playlist-section::-webkit-scrollbar { display: none; }
+.nm-pl-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 4px;
+    border-bottom: 1px solid rgba(180, 200, 220, .2);
+    cursor: pointer;
+    transition: background .15s;
+}
+.nm-pl-item:last-child { border-bottom: none; }
+.nm-pl-item:hover { background: rgba(255, 255, 255, .4); border-radius: 8px; }
+.nm-pl-item.playing { color: #5a8ab5; }
+.nm-pl-num {
+    width: 18px;
+    font-size: 11px;
+    color: #a0b0c0;
+    text-align: center;
+    flex-shrink: 0;
+}
+.nm-pl-info { flex: 1; min-width: 0; }
+.nm-pl-name {
+    font-size: 12px;
+    color: #5a6a7e;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.nm-pl-artist { font-size: 10px; color: #a0b0c0; margin-top: 2px; }
+.nm-empty {
+    text-align: center;
+    padding: 16px 0;
+    font-size: 12px;
+    color: #a0b0c0;
+}
+
+/* ---------- 我的收藏网格 ---------- */
+.nm-mine-section { margin-bottom: 14px; }
+.nm-mine-title { font-size: 12px; color: #7a8a9a; margin-bottom: 8px; padding-left: 4px; }
+.nm-mine-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.nm-mine-card {
+    background: rgba(255, 255, 255, .5);
+    border: 1px solid rgba(255, 255, 255, .6);
+    border-radius: 12px;
+    padding: 12px;
+    text-align: center;
+    cursor: pointer;
+    transition: all .2s ease;
+}
+.nm-mine-card:hover {
+    background: #fff;
+    box-shadow: 0 2px 10px rgba(120, 150, 180, .15);
+}
+.nm-mine-card-icon {
+    width: 32px;
+    height: 32px;
+    margin: 0 auto 6px;
+    border-radius: 10px;
+    background: linear-gradient(145deg, #d0e4f4, #b0cce4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+}
+.nm-mine-card-name { font-size: 11px; color: #6a7e94; }
+
+/* ---------- 角色联动 ---------- */
+.nm-role-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 14px;
+    padding: 10px;
+    background: rgba(255, 255, 255, .5);
+    border-radius: 14px;
+    border: 1px solid rgba(255, 255, 255, .6);
+}
+.nm-role-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: linear-gradient(145deg, #d0e4f4, #b0cce4);
+    background-size: cover;
+    background-position: center;
+    box-shadow: 0 2px 8px rgba(120, 150, 180, .2);
+    flex-shrink: 0;
+}
+.nm-role-name { font-size: 14px; font-weight: 600; color: #3d4f65; }
+.nm-role-desc { font-size: 11px; color: #8a9ab0; margin-top: 2px; }
+.nm-role-playlist-title { font-size: 12px; color: #7a8a9a; margin-bottom: 8px; padding-left: 4px; }
+.nm-setfav-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 14px;
+}
+.nm-setfav-row select {
+    flex: 1;
+    padding: 8px 10px;
+    background: rgba(255, 255, 255, .6);
+    border: 1px solid rgba(255, 255, 255, .7);
+    border-radius: 10px;
+    font-size: 12px;
+    color: #4a5568;
+    font-family: inherit;
+    outline: none;
+}
+.nm-setfav-row button {
+    padding: 8px 14px;
+    background: linear-gradient(145deg, #b8d4ec, #94b8d8);
+    border: none;
+    border-radius: 10px;
+    color: #fff;
+    font-size: 12px;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+/* ---------- 搜索 ---------- */
+.nm-search-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255, 255, 255, .6);
+    border: 1px solid rgba(255, 255, 255, .7);
+    border-radius: 12px;
+    padding: 8px 12px;
+    margin-bottom: 14px;
+}
+.nm-search-bar svg { flex-shrink: 0; opacity: .5; color: #7a8a9a; }
+.nm-search-bar input {
+    flex: 1;
+    border: none;
+    outline: none;
+    background: transparent;
+    font-size: 13px;
+    color: #4a5568;
+    font-family: inherit;
+}
+.nm-search-bar input::placeholder { color: #a0b0c0; }
+
+/* ---------- 登录 / AI 设置 ---------- */
+.nm-login-box { text-align: center; padding: 10px 0; }
+.nm-login-avatar {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    margin: 0 auto 14px;
+    background: linear-gradient(145deg, #d0e4f4, #b0cce4);
+    box-shadow: 0 4px 12px rgba(140, 170, 200, .25);
+    background-position: center;
+}
+.nm-login-title { font-size: 16px; font-weight: 600; color: #3d4f65; margin-bottom: 4px; }
+.nm-login-desc { font-size: 11px; color: #8a9ab0; margin-bottom: 18px; }
+.nm-api-row,
+.nm-login-input-row { margin-bottom: 10px; text-align: left; }
+.nm-login-input,
+.nm-api-row input {
+    width: 100%;
+    padding: 10px 14px;
+    background: rgba(255, 255, 255, .6);
+    border: 1px solid rgba(255, 255, 255, .7);
+    border-radius: 12px;
+    font-size: 13px;
+    color: #4a5568;
+    outline: none;
+    font-family: inherit;
+}
+.nm-login-input::placeholder { color: #a0b0c0; }
+.nm-login-input:focus { border-color: rgba(168, 197, 224, .6); background: #fff; }
+.nm-login-btn {
+    width: 100%;
+    padding: 11px;
+    margin-top: 8px;
+    background: linear-gradient(145deg, #b8d4ec, #94b8d8);
+    border: none;
+    border-radius: 12px;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    font-family: inherit;
+    box-shadow: 0 4px 12px rgba(140, 170, 200, .3);
+    transition: filter .2s;
+}
+.nm-login-btn:hover { filter: brightness(1.05); }
+.nm-login-other {
+    display: flex;
+    justify-content: center;
+    padding: 0 8px;
+    margin-top: 10px;
+}
+.nm-login-other span { font-size: 11px; color: #8a9ab0; cursor: pointer; }
+.nm-login-other span:hover { color: #5a7a9a; }
+.nm-qr-img {
+    display: block;
+    width: 160px;
+    height: 160px;
+    margin: 12px auto 0;
+    border-radius: 12px;
+}
+
+/* AI 联动设置折叠区 */
+.nm-ai-section { margin: 14px 0; text-align: left; }
+.nm-ai-title {
+    font-size: 12px;
+    color: #5a7a9a;
+    cursor: pointer;
+    padding: 8px 4px;
+    border-radius: 8px;
+    transition: background .15s;
+}
+.nm-ai-title:hover { background: rgba(255, 255, 255, .4); }
+.nm-ai-body {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height .3s ease;
+}
+.nm-ai-body.open { max-height: 400px; }
+.nm-ai-save { margin-top: 4px; }
+.nm-ai-hint {
+    font-size: 10px;
+    color: #a0b0c0;
+    margin-top: 8px;
+    text-align: center;
+    line-height: 1.5;
+}
+
+/* ---------- 底部音量条 ---------- */
+.nm-volume-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(180, 200, 220, .2);
+    color: #8a9ab0;
+}
+.nm-volume-row svg { flex-shrink: 0; }
+.nm-volume-bar {
+    flex: 1;
+    height: 3px;
+    background: rgba(150, 170, 190, .2);
+    border-radius: 2px;
+    cursor: pointer;
+    position: relative;
+}
+.nm-volume-fill {
+    width: 60%;
+    height: 100%;
+    background: linear-gradient(90deg, #a8c5e0, #c5dcf0);
+    border-radius: 2px;
+}
+
+/* ---------- AI 推荐歌曲卡片 ---------- */
+.nm-reco-section {
+    margin-bottom: 14px;
+}
+.nm-reco-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    padding: 0 4px;
+}
+.nm-reco-title {
+    font-size: 12px;
+    color: rgba(255, 255, 255, .5);
+    font-weight: 500;
+}
+.nm-reco-btn {
+    padding: 5px 12px;
+    background: rgba(255, 255, 255, .12);
+    border: 1px solid rgba(255, 255, 255, .15);
+    border-radius: 10px;
+    color: #fff;
+    font-size: 11px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background .2s;
+}
+.nm-reco-btn:hover { background: rgba(255, 255, 255, .2); }
+.nm-reco-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+.nm-reco-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.nm-reco-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px;
+    background: rgba(255, 255, 255, .06);
+    border: 1px solid rgba(255, 255, 255, .08);
+    border-radius: 14px;
+    cursor: pointer;
+    transition: all .2s ease;
+}
+.nm-reco-card:hover {
+    background: rgba(255, 255, 255, .12);
+    transform: translateY(-1px);
+}
+.nm-reco-cover {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    background: linear-gradient(145deg, rgba(255,255,255,.15), rgba(255,255,255,.05));
+    background-size: cover;
+    background-position: center;
+    flex-shrink: 0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, .3);
+}
+.nm-reco-info {
+    flex: 1;
+    min-width: 0;
+}
+.nm-reco-name {
+    font-size: 13px;
+    font-weight: 500;
+    color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.nm-reco-artist {
+    font-size: 11px;
+    color: rgba(255, 255, 255, .5);
+    margin-top: 2px;
+}
+.nm-reco-reason {
+    font-size: 10px;
+    color: rgba(255, 255, 255, .35);
+    margin-top: 3px;
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+.nm-reco-play {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, .15);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+/* ---------- 一起听：分享 & 注入开关 ---------- */
+.nm-share-row {
+    margin-bottom: 14px;
+    text-align: center;
+}
+.nm-share-btn {
+    width: 100%;
+    padding: 9px;
+    margin-bottom: 10px;
+    background: rgba(255, 255, 255, .6);
+    border: 1px solid rgba(255, 255, 255, .7);
+    border-radius: 10px;
+    font-size: 12px;
+    color: #5a7a9a;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all .2s ease;
+}
+.nm-share-btn:hover {
+    background: #fff;
+    color: #4a6080;
+    box-shadow: 0 2px 10px rgba(120, 150, 180, .15);
+}
+.nm-inject-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: #7a8a9a;
+    cursor: pointer;
+    user-select: none;
+}
+.nm-inject-toggle input {
+    accent-color: #94b8d8;
+    cursor: pointer;
+}
+
+/* ---------- 角色视图：双头像 + 文案 ---------- */
+.nm-duo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 4px 0 12px;
+}
+.nm-avatar {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background-size: cover;
+    background-position: center;
+    border: 3px solid rgba(255, 255, 255, .22);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, .45);
+    flex-shrink: 0;
+}
+.nm-avatar-left {
+    background-image: url("https://s1.imagehub.cc/images/2026/10/09/f770601bb5cbd1908ead5d535f540ea3.png");
+}
+.nm-avatar-right {
+    background-image: url("https://s1.imagehub.cc/images/2026/10/09/b30c4e26ad579c0dbd00b16728a5dd41.png");
+}
+.nm-wave {
+    width: 70px;
+    height: 36px;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 40'%3E%3Cpath d='M0 20 Q25 6 50 20 T100 20' fill='none' stroke='%23ff6b6b' stroke-width='2.5' stroke-linecap='round'/%3E%3C/svg%3E") center/contain no-repeat;
+}
+.nm-tagline {
+    text-align: center;
+    font-size: 14px;
+    letter-spacing: 1.2px;
+    color: rgba(255, 255, 255, .9);
+    margin-bottom: 14px;
+    font-style: italic;
+    font-weight: 300;
+}
+
+/* ---------- 子标签：他的推荐 / 他的喜欢 / 他的想法 ---------- */
+.nm-subtabs {
+    display: flex;
+    justify-content: space-around;
+    margin-bottom: 14px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, .1);
+    font-size: 13px;
+}
+.nm-subtab {
+    color: rgba(255, 255, 255, .4);
+    cursor: pointer;
+    transition: color .2s;
+    padding: 4px 8px;
+}
+.nm-subtab.active {
+    color: #fff;
+    font-weight: 500;
+}
+.nm-subview {
+    min-height: 80px;
+}
+
+/* ---------- 他的想法 ---------- */
+.nm-thought-block {
+    margin-bottom: 16px;
+}
+.nm-thought-label {
+    font-size: 12px;
+    color: rgba(255, 255, 255, .5);
+    margin-bottom: 8px;
+    font-weight: 500;
+}
+.nm-thought-songs {
+    background: rgba(255, 255, 255, .05);
+    border: 1px solid rgba(255, 255, 255, .08);
+    border-radius: 12px;
+    padding: 8px 10px;
+    margin-bottom: 8px;
+}
+.nm-th-song {
+    font-size: 12px;
+    color: rgba(255, 255, 255, .7);
+    padding: 3px 0;
+    line-height: 1.5;
+}
+.nm-th-song span {
+    color: rgba(255, 255, 255, .35);
+    font-size: 11px;
+}
+.nm-thought-btn {
+    width: 100%;
+    padding: 9px;
+    background: rgba(255, 255, 255, .1);
+    border: 1px solid rgba(255, 255, 255, .15);
+    border-radius: 12px;
+    color: #fff;
+    font-size: 12px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background .2s;
+    margin-bottom: 8px;
+}
+.nm-thought-btn:hover { background: rgba(255, 255, 255, .18); }
+.nm-thought-btn:disabled { opacity: .5; cursor: not-allowed; }
+.nm-thought-result {
+    font-size: 12px;
+    color: rgba(255, 255, 255, .8);
+    line-height: 1.7;
+    padding: 0 2px;
+}
+.nm-th-line { margin-bottom: 4px; }
+.nm-thinking { color: rgba(255, 255, 255, .35); font-style: italic; }
+.nm-th-error { color: rgba(255, 120, 120, .8); font-size: 11px; }
+
+/* ---------- Toast 提示 ---------- */
+.nm-toast {
+    position: fixed;
+    bottom: 40px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: rgba(60, 80, 110, .9);
+    color: #fff;
+    padding: 10px 20px;
+    border-radius: 10px;
+    font-size: 13px;
+    z-index: 100000;
+    opacity: 0;
+    transition: all .3s ease;
+    pointer-events: none;
+    backdrop-filter: blur(10px);
+}
+.nm-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ---------- 酒馆扩展设置面板 ---------- */
+.nm-ext-settings {
+    padding: 10px 0;
+}
+.nm-ext-settings h3 {
+    margin: 0 0 14px 0;
+    font-size: 15px;
+}
+.nm-set-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+}
+.nm-set-group label {
+    min-width: 90px;
+    font-size: 13px;
+    color: var(--SmartThemeBodyColor, #333);
+}
+.nm-set-group input {
+    flex: 1;
+    min-width: 160px;
+    padding: 6px 10px;
+    border: 1px solid var(--SmartThemeBorderColor, #ccc);
+    border-radius: 8px;
+    font-size: 13px;
+    background: var(--SmartThemeInputColor, #fff);
+    color: var(--SmartThemeBodyColor, #333);
+}
+.nm-set-btn {
+    padding: 6px 12px;
+    background: var(--SmartThemePrimaryButtonColor, #4a90d9);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 12px;
+    cursor: pointer;
+    white-space: nowrap;
+}
+.nm-set-btn:hover { filter: brightness(1.1); }
+.nm-set-status {
+    font-size: 12px;
+    min-width: 80px;
+}
+.nm-set-save-btn {
+    margin-top: 10px;
+    padding: 8px 20px;
+    background: var(--SmartThemePrimaryButtonColor, #4a90d9);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 13px;
+    cursor: pointer;
+}
+.nm-set-save-btn:hover { filter: brightness(1.1); }
+
