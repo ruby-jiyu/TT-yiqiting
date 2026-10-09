@@ -5,7 +5,7 @@ const path = require('node:path');
 (async () => {
     const browser = await chromium.launch({ executablePath: '/usr/bin/chromium', headless: true, args: ['--no-sandbox'] });
     try {
-        const page = await browser.newPage({ viewport: { width: 900, height: 800 } });
+        const page = await browser.newPage({ viewport: { width: 900, height: 800 }, hasTouch: true });
         const errors = [], requests = [];
         let aiMode = 'recommend', hold, release, musicFail = false, aiFailure = '';
         page.on('pageerror', e => errors.push(e.message));
@@ -72,6 +72,11 @@ const path = require('node:path');
         await page.addStyleTag({ path: path.resolve(__dirname, '../index.css') });
         await page.addScriptTag({ path: path.resolve(__dirname, '../index.js') });
         assert.deepEqual(errors, []);
+        const orbBox = await page.locator('#nm-orb').boundingBox();
+        await page.touchscreen.tap(orbBox.x + orbBox.width / 2, orbBox.y + orbBox.height / 2);
+        assert.equal(await page.locator('#nm-panel').isVisible(), true);
+        await page.touchscreen.tap(orbBox.x + orbBox.width / 2, orbBox.y + orbBox.height / 2);
+        assert.equal(await page.locator('#nm-panel').isVisible(), false, 'one mobile tap closes once');
         await page.click('#nm-orb');
         await page.click('[data-view="login"]');
         await page.fill('#nm-ai-base', 'https://ai.test/v1/chat/completions/');
@@ -159,6 +164,16 @@ const path = require('node:path');
         assert.deepEqual(errors, []);
         await page.click('[data-view="role"]');
         await page.click('[data-sub="reco"]');
+        await page.click('#nm-close-panel');
+        assert.equal(await page.locator('#nm-panel').isVisible(), false);
+        await page.locator('#nm-orb').press('Enter');
+        assert.equal(await page.locator('#nm-panel').isVisible(), true);
+        await page.click('#nm-hide-orb');
+        assert.equal(await page.locator('#nm-wrap').isVisible(), false);
+        assert.equal(await page.locator('#nm-set-show-orb').isChecked(), false);
+        await page.locator('#nm-set-show-orb').check();
+        assert.equal(await page.locator('#nm-wrap').isVisible(), true);
+        await page.click('#nm-orb');
         await page.screenshot({ path: path.resolve(__dirname, '../../preview.png') });
         console.log('PASS: independent configuration, API errors, character isolation, persistence, matching, favorites, thoughts, escaping, and song context');
     } finally { await browser.close(); }

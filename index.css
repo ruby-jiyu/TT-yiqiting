@@ -25,6 +25,9 @@
 
 /* ---------- 猫咪悬浮球 ---------- */
 #nm-orb {
+    border: 0;
+    padding: 0;
+    touch-action: none;
     width: 42px;
     height: 42px;
     border-radius: 50%;
@@ -48,12 +51,9 @@
 
 /* ---------- 播放面板（ins 纯色风） ---------- */
 #nm-panel {
-    position: absolute;
-    top: 50%;
-    right: 52px;
-    transform: translateY(-50%);
-    width: 330px;
-    max-height: 82vh;
+    position: fixed;
+    width: min(330px, calc(100vw - 24px));
+    max-height: min(82vh, calc(100vh - 24px));
     background: #1a1a1a;
     border: 1px solid rgba(255, 255, 255, .08);
     border-radius: 20px;
@@ -74,6 +74,10 @@
     z-index: 1;
     padding: 18px;
 }
+.nm-panel-controls { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.nm-panel-controls button { padding: 5px 8px; border: 1px solid #526071; border-radius: 6px; background: #232a33; color: #fff; cursor: pointer; font: inherit; font-size: 12px; }
+.nm-ext-settings > label { display: flex; gap: 8px; align-items: center; margin: 8px 0; font-size: 13px; }
+#nm-orb:focus-visible { outline: 2px solid #afc8e8; outline-offset: 3px; }
 
 /* ---------- 顶栏标签 ---------- */
 .nm-top-tabs {

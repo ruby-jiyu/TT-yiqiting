@@ -17,6 +17,7 @@ const defaultSettings = {
     currentTrackIndex: 0,
     volume: 0.6,
     autoplayOnCharChange: true,
+    showOrb: true,
     // 独立的 OpenAI 兼容 AI 配置
     aiApiBase: '',
     aiApiKey: '',
@@ -353,10 +354,14 @@ function buildUI() {
     $wrap = document.createElement('div');
     $wrap.id = 'nm-wrap';
     $wrap.innerHTML = `
-        <div id="nm-orb"></div>
-        <div id="nm-panel">
+        <button type="button" id="nm-orb" aria-label="打开一起听播放器" aria-expanded="false" aria-controls="nm-panel"></button>
+        <div id="nm-panel" role="region" aria-label="一起听播放器">
             <div class="nm-panel-bg"></div>
             <div class="nm-panel-content">
+                <div class="nm-panel-controls">
+                    <button type="button" id="nm-hide-orb">隐藏悬浮球</button>
+                    <button type="button" id="nm-close-panel" aria-label="收起播放器">收起 ×</button>
+                </div>
                 <div class="nm-top-tabs">
                     <button class="nm-tab active" data-view="mine">我的</button>
                     <button class="nm-tab" data-view="role">角色联动</button>
@@ -479,6 +484,7 @@ function buildUI() {
     makeDraggable();
     renderLoginView();
     renderRoleView();
+    setOrbVisible(getSettings().showOrb);
 }
 
 // ============= 事件绑定 =============
@@ -783,48 +789,114 @@ async function generateThought(type) {
     }
 }
 
-// ============= 悬浮球拖拽 + 点击开关 =============
+// ============= 悬浮球与面板开关 =============
+function positionPanel() {
+    const panel = $wrap?.querySelector('#nm-panel');
+    if (!panel || panel.style.display !== 'block') return;
+    const orbRect = $wrap.querySelector('#nm-orb').getBoundingClientRect();
+    const panelRect = panel.getBoundingClientRect();
+    const margin = 12;
+    const left = Math.max(margin, Math.min(orbRect.left - panelRect.width - margin, window.innerWidth - panelRect.width - margin));
+    const top = Math.max(margin, Math.min(orbRect.top + orbRect.height / 2 - panelRect.height / 2, window.innerHeight - panelRect.height - margin));
+    panel.style.left = left + 'px';
+    panel.style.top = top + 'px';
+}
+
+function setPanelOpen(open) {
+    if (!$wrap) return;
+    const panel = $wrap.querySelector('#nm-panel');
+    const orb = $wrap.querySelector('#nm-orb');
+    panel.style.display = open ? 'block' : 'none';
+    orb.setAttribute('aria-expanded', String(open));
+    orb.setAttribute('aria-label', open ? '收起一起听播放器' : '打开一起听播放器');
+    if (open) positionPanel();
+}
+
+function setOrbVisible(visible) {
+    const settings = getSettings();
+    if (settings.showOrb !== visible) {
+        settings.showOrb = visible;
+        saveSettingsDebounced();
+    }
+    if ($wrap) {
+        if (!visible) setPanelOpen(false);
+        $wrap.style.display = visible ? '' : 'none';
+    }
+    const checkbox = document.querySelector('#nm-set-show-orb');
+    if (checkbox) checkbox.checked = visible;
+}
+
 function makeDraggable() {
     const orb = $wrap.querySelector('#nm-orb');
     const panel = $wrap.querySelector('#nm-panel');
-    let isDragging = false, hasDragged = false;
-    let startX = 0, startY = 0, origLeft = 0, origTop = 0;
+    let gesture = null;
+    let suppressClick = false;
 
-    const onDown = (clientX, clientY) => {
-        isDragging = true; hasDragged = false;
-        startX = clientX; startY = clientY;
+    // pointer 事件负责拖拽，开关只由 click 处理一次。
+    // 不再同时用 touchend 和手机随后生成的 click 切换面板。
+    orb.addEventListener('pointerdown', e => {
+        if (e.isPrimary === false || e.button !== 0) return;
         const rect = $wrap.getBoundingClientRect();
-        origLeft = rect.left; origTop = rect.top;
-        $wrap.style.transition = 'none';
+        gesture = { id: e.pointerId, x: e.clientX, y: e.clientY, left: rect.left, top: rect.top };
+        suppressClick = false;
+        orb.setPointerCapture(e.pointerId);
+    });
+    orb.addEventListener('pointermove', e => {
+        if (!gesture || e.pointerId !== gesture.id) return;
+        const dx = e.clientX - gesture.x, dy = e.clientY - gesture.y;
+        if (Math.hypot(dx, dy) > 8) suppressClick = true;
+        if (!suppressClick) return;
+        const maxLeft = Math.max(0, window.innerWidth - $wrap.offsetWidth);
+        const maxTop = Math.max(0, window.innerHeight - $wrap.offsetHeight);
+        $wrap.style.left = Math.max(0, Math.min(gesture.left + dx, maxLeft)) + 'px';
+        $wrap.style.top = Math.max(0, Math.min(gesture.top + dy, maxTop)) + 'px';
+        $wrap.style.right = 'auto';
+        positionPanel();
+    });
+    const finish = e => {
+        if (!gesture || e.pointerId !== gesture.id) return;
+        if (e.type === 'pointercancel') suppressClick = true;
+        gesture = null;
+        if (orb.hasPointerCapture(e.pointerId)) orb.releasePointerCapture(e.pointerId);
     };
-    const onMove = (clientX, clientY) => {
-        if (!isDragging) return;
-        const dx = clientX - startX, dy = clientY - startY;
-        if (Math.abs(dx) > 6 || Math.abs(dy) > 6) hasDragged = true;
-        if (!hasDragged) return;
-        let nl = origLeft + dx, nt = origTop + dy;
-        const mx = window.innerWidth - $wrap.offsetWidth;
-        const my = window.innerHeight - $wrap.offsetHeight;
-        nl = Math.max(0, Math.min(nl, mx)); nt = Math.max(0, Math.min(nt, my));
-        $wrap.style.left = nl + 'px'; $wrap.style.top = nt + 'px'; $wrap.style.right = 'auto';
-    };
-    const onUp = () => {
-        isDragging = false;
-    };
-    const togglePanel = () => {
-        if (hasDragged) return;
-        const open = panel.style.display === 'block';
-        panel.style.display = open ? 'none' : 'block';
-    };
-
-    orb.addEventListener('mousedown', (e) => { onDown(e.clientX, e.clientY); });
-    document.addEventListener('mousemove', (e) => onMove(e.clientX, e.clientY));
-    document.addEventListener('mouseup', onUp);
-    orb.addEventListener('click', (e) => { e.stopPropagation(); togglePanel(); });
-
-    orb.addEventListener('touchstart', (e) => { const t = e.touches[0]; onDown(t.clientX, t.clientY); }, { passive: true });
-    orb.addEventListener('touchmove', (e) => { const t = e.touches[0]; onMove(t.clientX, t.clientY); }, { passive: true });
-    orb.addEventListener('touchend', (e) => { onUp(); if (!hasDragged) togglePanel(); });
+    orb.addEventListener('pointerup', finish);
+    orb.addEventListener('pointercancel', finish);
+    orb.addEventListener('lostpointercapture', e => {
+        if (gesture?.id === e.pointerId) { gesture = null; suppressClick = true; }
+    });
+    orb.addEventListener('click', e => {
+        e.stopPropagation();
+        if (suppressClick && e.detail !== 0) {
+            suppressClick = false;
+            e.preventDefault();
+            return;
+        }
+        suppressClick = false;
+        setPanelOpen(panel.style.display !== 'block');
+    });
+    $wrap.querySelector('#nm-close-panel').addEventListener('click', e => {
+        e.stopPropagation();
+        setPanelOpen(false);
+        orb.focus();
+    });
+    $wrap.querySelector('#nm-hide-orb').addEventListener('click', e => {
+        e.stopPropagation();
+        setOrbVisible(false);
+        toast('已隐藏悬浮球，可在酒馆扩展设置中重新开启');
+    });
+    document.addEventListener('click', e => {
+        if (!$wrap.contains(e.target)) setPanelOpen(false);
+    });
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape' && panel.style.display === 'block') {
+            e.preventDefault();
+            e.stopPropagation();
+            setPanelOpen(false);
+            orb.focus();
+        }
+    });
+    window.addEventListener('resize', positionPanel);
+    if (typeof ResizeObserver !== 'undefined') new ResizeObserver(positionPanel).observe(panel);
 }
 
 // ============= 渲染：我的歌单 =============
@@ -1118,10 +1190,12 @@ function registerExtensionSettings() {
         '<div class="nm-set-group"><label>AI 模型名</label><input type="text" id="nm-set-ai-model" placeholder="deepseek-chat" value="' + escapeHtml(s.aiModel) + '" />' +
         '<button id="nm-set-test-ai" class="nm-set-btn">测试连接</button><span id="nm-set-ai-status" class="nm-set-status" role="status"></span></div>' +
         '<label><input type="checkbox" id="nm-set-autoplay" ' + (s.autoplayOnCharChange ? 'checked' : '') + ' /> 切换角色后自动播放TA喜欢的歌</label>' +
+        '<label><input type="checkbox" id="nm-set-show-orb" ' + (s.showOrb ? 'checked' : '') + ' /> 显示猫咪悬浮球（可随时重新开启）</label>' +
         '<div class="nm-ai-hint">AI 独立于酒馆聊天模型。API 地址可填 /v1 基础地址或完整 /chat/completions 地址。</div>' +
         '<button id="nm-set-save" class="nm-set-save-btn">保存设置</button>';
     host.append(panel);
     const ids = ['#nm-set-ai-api', '#nm-set-ai-key', '#nm-set-ai-model'];
+    panel.querySelector('#nm-set-show-orb').addEventListener('change', e => setOrbVisible(e.target.checked));
     panel.querySelector('#nm-set-save').addEventListener('click', () => {
         Object.assign(s, readAiFields(panel, ids));
         s.apiBase = panel.querySelector('#nm-set-api').value.trim();
@@ -1149,6 +1223,10 @@ function registerExtensionSettings() {
 }
 
 async function init() {
+    if (document.getElementById('nm-wrap')) {
+        console.warn('[一起听] 已有播放器实例，请保留一个扩展安装副本');
+        return;
+    }
     const s = getSettings();
     registerExtensionSettings();
     buildUI();
